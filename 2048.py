@@ -32,6 +32,7 @@ class Game:
 		self.scorefont = pygame.font.SysFont("arial", 30)
 		self.tileMatrix = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 		self.undoMat = []
+
 	def loop(self, fromLoaded = False):
 		auto = True
 		if not fromLoaded:
@@ -62,6 +63,7 @@ class Game:
 							self.move(direction)
 				else:
 					self.printGameOver()
+
 				if event.type == KEYDOWN:
 					if event.key == pygame.K_r:
 						self.reset()

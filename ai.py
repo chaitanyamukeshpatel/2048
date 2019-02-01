@@ -17,6 +17,7 @@ class Gametree:
 
 
 	# expectimax for computing best move
+	# Algorithm based on the pseudocode provided in the slides
 	def expectimax(self, node):
 		if node.isTerminal:
 			return node.payoff
@@ -38,13 +39,17 @@ class Gametree:
 			'''Error'''
 
 	# function to return best decision to game
-
 	def compute_decision(self):
-		#change this return value when you have implemented the function
+		# change this return value when you have implemented the function
+		# Create a root node
 		root_node = self.make_root()
+		# Build a tree on that root node
 		self.growtree(root_node)
-		# print('Starting expectimax on root')
+		# Run the expectimax on the tree
 		self.expectimax(root_node)
+		# The way I have set up my tree and expectimax algorithm is that after running
+		# expectimax theorem, the depth 1 nodes contain the heuristic score for the best possible move
+		# So we look at which move at depth 1 is optimum
 		maximum = -math.inf
 		max_index = 0
 		for i in range(0, len(root_node.children)):
@@ -57,8 +62,10 @@ class Gametree:
 		# for n in root_node.children:
 		# 	print('For move ', n.move, ' and payoff ', n.payoff, ' ', n.state)
 		# print('')
+		# Returning the best possible move
 		return max_index
 
+	# A function to create a simple root node
 	def make_root(self):
 		root_node = Node()
 		root_node.playerType = 0
@@ -69,36 +76,22 @@ class Gametree:
 		root_node.depth = 0
 		return root_node
 
+	# A function to calcualte the heristic weight of the node in the tree
+	# It takes as an input a matrix containing the state and returns the weight
+	# It incentives having the largest tile in the corner
+	# In about 500 test runs, this heuristic was able to reach the 2048 tile with 75% efficiency
+	# This heuristic helped reach 5000 points with efficiency 98%
 	def weight_calculator(self, state):
-		weight_matrix = [[4**15, 4**8, 4**7, 4**0],[4**14, 4**9, 4**6, 4**1], [4**13, 4**10, 4**5, 4**2], [4**12, 4**11, 4**4, 4**3]]
+		weight_matrix = [[2**15, 2**8, 2**7, 2**0], [2**14, 2**9, 2**6, 2**1],[2**13, 2**10, 2**5, 2**2], [2**12, 2**11, 2**4, 2**3]]
 		weight = 0
-		for i in range(0,4):
-			for j in range(0,4):
-				weight = weight + (weight_matrix[i][j]*state[i][j])
-
-		return weight
-
-	def detect_corner_max(self, state):
-		maximum = -math.inf
-		for i in range(0, len(state)):
-			if max(state[i]) >= maximum:
-				maximum = max(state[i])
-
-		if state[0][0] == maximum | state[0][3] == maximum | state[3][0] == maximum | state[3][3] == maximum:
-			return True
-		else:
-			return False
-
-	def findEmptyTilesCount(self, state):
-		count = 0
 		for i in range(0, 4):
 			for j in range(0, 4):
-				if state[i][j] == 0:
-					count = count + 1
-		return count
+				weight = weight + (weight_matrix[i][j]*state[i][j])
+		return weight
 
 	def growtree(self, root):
 		root_node = root
+		# Creating the depth 1 layer of the tree
 		for i in range(0, 4):
 			simulator = Simulator(copy.deepcopy(root_node.state), copy.deepcopy(root_node.payoff))
 			child_node = Node()
@@ -112,7 +105,7 @@ class Gametree:
 				root_node.children.append(child_node)
 
 		depth_two = []
-
+		# Creating the depth 2 layer of the tree
 		for node in root_node.children:
 			simulator = Simulator(copy.deepcopy(node.state), copy.deepcopy(node.payoff))
 			to_fill = simulator.findEmptyTiles()
@@ -126,6 +119,7 @@ class Gametree:
 				node.children.append(child_node)
 				depth_two.append(child_node)
 
+		# Creating the depth 3 layer of the tree
 		for node in depth_two:
 			for i in range(0, 4):
 				simulator = Simulator(copy.deepcopy(node.state), copy.deepcopy(node.payoff))
@@ -133,13 +127,13 @@ class Gametree:
 				child_node.playerType = 1
 				simulator.move(i)
 				child_node.state = simulator.tileMatrix
-				# child_node.payoff = simulator.total_points
 				child_node.payoff = self.weight_calculator(child_node.state)
 				child_node.isTerminal = True
 				if child_node.state != node.state:
 					child_node.depth = 3
 					node.children.append(child_node)
 
+		# The following commented code was to test the tree that was being created
 		# print('root_node ', root_node.state)
 		# print('')
 		# print('0 child ', root_node.children[0].state, ' score: ', root_node.children[0].payoff)
@@ -167,8 +161,10 @@ class Gametree:
 		# 		print(child.state)
 		#
 		# exit(0)
+		# End of tree testing code
 
-
+# All the methods here in the simulator class are taken from the 2048 game engine
+# With the exception that the move function here does not place a random tile 2
 
 class Simulator:
 	def __init__(self, matrix, points):
@@ -182,7 +178,6 @@ class Simulator:
 		if self.canMove():
 			self.moveTiles()
 			self.mergeTiles()
-			#self.placeRandomTile()
 		for j in range(0, (4 - direction) % 4):
 			self.rotateMatrixClockwise()
 
@@ -244,14 +239,23 @@ class Simulator:
 					self.total_points += tm[i][k]
 					self.moveTiles()
 
+# Node class for the game tree that stores the critical information required
+# to run the expectimax algorithm on the tree
 class Node:
 	def __init__(self):
+		# Indicates whether player is max or chance
 		self.playerType = 0
+		# Contains the matrix indicating the state of the game
 		self.state = []
+		# Boolean value to indicate if the node is terminal
 		self.isTerminal = False
+		# Boolean value to indicate if the node is the root of the tree
 		self.isRoot = False
+		# Contains the nodes which are the children of this node
 		self.children = []
+		# Stores the heuristic value the expectimax algorithm uses to make decisions
 		self.payoff = 0
-		self.chance = 0
+		# Stores the depth of the node in the tree
 		self.depth = 0
+		# Contains the move to the previous state that resulted in present state
 		self.move = 0
